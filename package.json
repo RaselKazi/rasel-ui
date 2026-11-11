@@ -1,15 +1,25 @@
 {
   "name": "rasel-ui",
   "version": "1.0.0",
-  "description": "Reusable React UI components CLI",
+  "description": "A reusable React UI component CLI",
   "type": "module",
   "bin": {
-    "rasel-ui": "./bin/rasel-ui.js"
+    "rasel-ui": "bin/rasel-ui.js"
   },
   "files": [
-    "bin/"
+    "bin/",
+    "README.md"
   ],
   "engines": {
     "node": ">=22"
-  }
+  },
+  "keywords": [
+    "react",
+    "ui",
+    "components",
+    "cli",
+    "tailwind",
+    "rasel-ui"
+  ],
+  "license": "MIT"
 }
