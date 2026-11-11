@@ -15,6 +15,7 @@
     {
       "name": "alert",
       "description": "An alert notification component",
+      "dependencies": ["button"],
       "files": [
         {
           "path": "alert.tsx",
@@ -29,6 +30,17 @@
         {
           "path": "badge.tsx",
           "url": "https://raw.githubusercontent.com/RaselKazi/rasel-ui/main/registry/components/badge.tsx"
+        }
+      ]
+    },
+    {
+      "name": "dialog",
+      "description": "A reusable dialog component",
+      "dependencies": ["button", "alert"],
+      "files": [
+        {
+          "path": "dialog.tsx",
+          "url": "https://raw.githubusercontent.com/RaselKazi/rasel-ui/main/registry/components/dialog.tsx"
         }
       ]
     }

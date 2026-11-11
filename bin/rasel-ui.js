@@ -2,10 +2,12 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { createInterface } from "node:readline/promises";
+import { stdin, stdout } from "node:process";
 
 const REGISTRY_URL =
   process.env.RASEL_UI_REGISTRY ??
-  "https://raw.githubusercontent.com/YOUR_USERNAME/rasel-ui/main/registry/registry.json";
+  "https://raw.githubusercontent.com/RaselKazi/rasel-ui/main/registry/registry.json";
 
 const args = process.argv.slice(2);
 
@@ -34,6 +36,26 @@ async function getRegistry() {
   return registry;
 }
 
+async function confirmOverwrite(fileName) {
+  if (!stdin.isTTY || !stdout.isTTY) {
+    return false;
+  }
+
+  const rl = createInterface({
+    input: stdin,
+    output: stdout,
+  });
+
+  try {
+    const answer = await rl.question(
+      `Component "${fileName}" already exists. Overwrite? (y/n): `,
+    );
+
+    return ["y", "yes"].includes(answer.trim().toLowerCase());
+  } finally {
+    rl.close();
+  }
+}
 // List available components
 async function listComponents() {
   const registry = await getRegistry();
@@ -68,6 +90,56 @@ function getSafeDestination(relativePath) {
   return destination;
 }
 
+function resolveComponentDependencies(registry, requestedNames) {
+  const componentMap = new Map(
+    registry.components.map((component) => [component.name, component]),
+  );
+
+  const orderedComponents = [];
+  const visited = new Set();
+  const visiting = new Set();
+
+  function visit(name) {
+    if (visited.has(name)) {
+      return;
+    }
+
+    if (visiting.has(name)) {
+      throw new Error(`Circular dependency detected: ${name}`);
+    }
+
+    const component = componentMap.get(name);
+
+    if (!component) {
+      throw new Error(`Component "${name}" not found in registry.`);
+    }
+
+    if (
+      component.dependencies !== undefined &&
+      !Array.isArray(component.dependencies)
+    ) {
+      throw new Error(`Invalid dependencies for component "${name}".`);
+    }
+
+    visiting.add(name);
+
+    for (const dependency of component.dependencies ?? []) {
+      visit(dependency);
+    }
+
+    visiting.delete(name);
+    visited.add(name);
+
+    orderedComponents.push(component);
+  }
+
+  for (const name of requestedNames) {
+    visit(name);
+  }
+
+  return orderedComponents;
+}
+
 // Download and install one component
 async function installComponent(component) {
   console.log(`\nInstalling ${component.name}...`);
@@ -75,6 +147,10 @@ async function installComponent(component) {
   if (!Array.isArray(component.files) || !component.files.length) {
     throw new Error("Component has no files.");
   }
+
+  let installed = 0;
+  let overwritten = 0;
+  let skipped = 0;
 
   for (const file of component.files) {
     const destination = getSafeDestination(file.path);
@@ -98,25 +174,36 @@ async function installComponent(component) {
     });
 
     try {
-      await writeFile(
-        destination,
-        content,
-        overwrite ? undefined : { flag: "wx" },
-      );
+      // প্রথমে existing file overwrite না করে write করার চেষ্টা।
+      await writeFile(destination, content, { flag: "wx" });
 
-      console.log(`  ✓ ${file.path}`);
+      console.log(`  ✓ Installed: ${file.path}`);
+      installed++;
     } catch (error) {
-      if (error.code === "EEXIST") {
-        console.log(`  ! ${file.path} already exists.`);
-        console.log("    Use --overwrite to replace it.");
+      if (error.code !== "EEXIST") {
+        throw error;
+      }
+
+      // --overwrite থাকলে সরাসরি replace।
+      const shouldOverwrite = overwrite || (await confirmOverwrite(file.path));
+
+      if (!shouldOverwrite) {
+        console.log(`  - Skipped: ${file.path}`);
+        skipped++;
         continue;
       }
 
-      throw error;
+      await writeFile(destination, content);
+
+      console.log(`  ✓ Overwritten: ${file.path}`);
+      overwritten++;
     }
   }
 
-  console.log(`✓ ${component.name} installation finished.`);
+  console.log(`\n${component.name} installation completed.`);
+  console.log(`  Installed: ${installed}`);
+  console.log(`  Overwritten: ${overwritten}`);
+  console.log(`  Skipped: ${skipped}`);
 }
 
 // Install multiple components
@@ -130,19 +217,33 @@ async function addComponents() {
 
   const registry = await getRegistry();
 
-  for (const name of componentNames) {
-    const component = registry.components.find((item) => item.name === name);
+  let componentsToInstall;
 
-    if (!component) {
-      console.error(`\nComponent "${name}" not found.`);
-      continue;
-    }
+  try {
+    componentsToInstall = resolveComponentDependencies(
+      registry,
+      componentNames,
+    );
+  } catch (error) {
+    console.error(`\nError: ${error.message}`);
+    process.exitCode = 1;
+    return;
+  }
 
+  console.log("\nInstallation plan:");
+
+  for (const component of componentsToInstall) {
+    console.log(`  - ${component.name}`);
+  }
+
+  for (const component of componentsToInstall) {
     try {
       await installComponent(component);
     } catch (error) {
-      console.error(`Failed to install ${name}: ${error.message}`);
+      console.error(`\nFailed to install ${component.name}: ${error.message}`);
+
       process.exitCode = 1;
+      return;
     }
   }
 }
