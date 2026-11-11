@@ -1,0 +1,15 @@
+{
+  "name": "rasel-ui",
+  "version": "1.0.0",
+  "description": "Reusable React UI components CLI",
+  "type": "module",
+  "bin": {
+    "rasel-ui": "./bin/rasel-ui.js"
+  },
+  "files": [
+    "bin/"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}

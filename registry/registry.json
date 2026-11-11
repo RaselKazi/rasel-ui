@@ -1,0 +1,36 @@
+{
+  "name": "rasel-ui",
+  "version": "1.0.0",
+  "components": [
+    {
+      "name": "button",
+      "description": "A reusable button component",
+      "files": [
+        {
+          "path": "button.tsx",
+          "url": "https://raw.githubusercontent.com/RaselKazi/rasel-ui/main/registry/components/button.tsx"
+        }
+      ]
+    },
+    {
+      "name": "alert",
+      "description": "An alert notification component",
+      "files": [
+        {
+          "path": "alert.tsx",
+          "url": "https://raw.githubusercontent.com/RaselKazi/rasel-ui/main/registry/components/alert.tsx"
+        }
+      ]
+    },
+    {
+      "name": "badge",
+      "description": "A reusable badge component",
+      "files": [
+        {
+          "path": "badge.tsx",
+          "url": "https://raw.githubusercontent.com/RaselKazi/rasel-ui/main/registry/components/badge.tsx"
+        }
+      ]
+    }
+  ]
+}
